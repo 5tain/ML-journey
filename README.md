@@ -10,14 +10,6 @@ It involves Data Cleaning,Exploratory Data Analysis,Data Visualization,Basic Sta
 
 By doing this project I learned how to work with real life and apply statistical methods to real life data.
 
-## Project 2: [Project Name]
-
-Brief description of the second project. Again, include the project's goals, dataset used, and outcomes.
-
-
-### Results
-
-Include key results or insights from the second project.
 
 - Aren Golazizian
 - arenfamilgolaziz@gmail.com
