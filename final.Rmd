@@ -1,0 +1,746 @@
+---
+title: "پروژه آمار"
+output:
+  html_document: default
+  pdf_document: default
+  papersize: a4
+  word_document: default
+---
+
+<style>
+.title {
+  text-align: center;
+}
+
+body {
+  font-family: "B Nazanin", Arial, sans-serif;
+}
+
+
+.rtl-text {
+  direction: rtl;
+  text-align: right;
+  font-size: 18px;
+}
+</style>
+
+<br> <br>
+
+<p class="rtl-text", style="font-size: 22px;">
+<strong>بخش اول: بارگذاری و پیش پردازش دادگان</strong>
+</p>
+
+```{r warning=FALSE , message=FALSE}
+library(ggplot2)
+library(tidyverse)
+df<- read.csv("C:/Users/arenf/Downloads/CarPrice_Assignment.csv")
+```
+
+<p class="rtl-text">
+<strong>• به دلخواه ۳ ستون از مجموعه دادگان را انتخاب و نمودار boxplot
+آنها را رسم کنید و در مورد آن توضیح دهید.
+</strong>
+</p>
+
+```{r warning=FALSE}
+qplot(x = df$price, y = "", geom = "boxplot", xlab = "Car price", ylab = " ", fill = I("purple"), margins = TRUE, col = I("black"))
+
+```
+
+<p class="rtl-text">
+با توجه به نمودار:<br>میانه به چارک اول نزدیکتر است پس توزیعمون
+positively skewed میباشد.<br> داده های پرتمون(نقاط خارج نمودار) نسبتا
+زیادند.<br> با توجه به طول جعبه واریانس نسبتا کمه.
+</p>
+
+```{r warning=FALSE}
+qplot(x = df$wheelbase,y = "" , geom = "boxplot", xlab = "wheelbase" , ylab= " ", fill= I("yellow"),
+      col = I("black"))
+```
+
+<p class="rtl-text">
+با توجه به نمودار:<br>میانه به چارک اول نزدیکتر است پس توزیعمون
+positively skewed میباشد.<br> داده های پرتمون(نقاط خارج نمودار) نسبتا کم
+هستند.<br> با توجه به طول جعبه واریانس نسبتا کمه.
+</p>
+
+```{r}
+qplot(x = df$carheight,y = "" , geom = "boxplot", xlab = "Car height" , ylab= " ", fill= I("lightblue"),col = I("black"))
+```
+
+<p class="rtl-text">
+با توجه به نمودار:<br>میانه به چارک اول نزدیکتر است پس توزیعمون
+negatively skewed میباشد.<br> داده پرت نداریم.<br> با توجه به طول جعبه
+واریانس نسبت به نمودار های قبلی بیشتر است.
+</p>
+
+```{=html}
+<style>
+  .box {
+    border: 1px solid black;
+    padding: 10px;
+  }
+</style>
+```
+<p class="rtl-text">
+<strong>• مشکل داده های گم شده (missing values) را برطرف کنید (شما مجاز
+به حذف هیچ یک از داده ها نیستید). روش خود را توضیح دهید و علت آن را بیان
+کنید.</strong>
+</p>
+
+\
+
+<p class="rtl-text">
+ابتدا ستون های numerical و categorical را جدا میکنیم چرا که روش حلشون
+فرق میکنه.
+</p>
+
+```{r}
+numerical_columns = c()
+categorical_columns= c()
+for (col in names(df)) {
+  if (typeof(df[[col]]) == "character" | is.factor(df[[col]])) {
+    categorical_columns <- c(categorical_columns, col)
+  } else if (is.numeric(df[[col]])) {
+    numerical_columns <- c(numerical_columns, col)
+  }
+}
+```
+
+```{r}
+numerical_columns
+categorical_columns
+```
+
+<p class="rtl-text">
+برای ستون های categorical داده های گم شده را با مد همان ستون پر میکنیم :
+</p>
+
+```{r}
+for (col in categorical_columns) {
+  # mode of the column
+  mode <- names(table(df[[col]]))[which.max(table(df[[col]]))]
+  df[[col]] <- ifelse(df[[col]] == "", mode, df[[col]])  # Replace missing values with mode
+}
+```
+
+<p class="rtl-text">
+با جایگزینی داده های گم شده با مد باعث میشود که skewness و در حالت کلی
+توزیع ستون هایی که داده گم شده دارند تغییر چشم گیری نکند.
+</p>
+
+<p class="rtl-text">
+برای ستون های عددی یا از میانگین و یا از میانه استفاده میکنیم.اگر توزیع
+ستون به توزیع نرمال نزدیک بود از میانگین و در غیر این صورت اگر توزیع
+skewed بود و داده های پرت چشمگیری داشت از میانه استفاده میکنیم:
+</p>
+
+```{r}
+for (col in numerical_columns) {
+  if (shapiro.test(df[[col]])$p.value >= 0.05) {  # Check if data is normally distributed with shapiro test
+    mean_val <- mean(df[[col]], na.rm = TRUE)  # Compute the mean of the column
+    df[[col]] <- ifelse(is.na(df[[col]]), mean_val, df[[col]])  # Replace missing values with mean
+  } else {
+    median_val <- median(df[[col]], na.rm = TRUE)  # Compute the median of the column
+    df[[col]] <- ifelse(is.na(df[[col]]), median_val, df[[col]])  # Replace missing values with median
+  }
+}
+```
+
+<p class="rtl-text">
+ستون هایی که توزیع تقریبا نرمالی دارند اکثر داده هاشون نزدیک میانگین
+توزیع شدند برای همین داده های گم شده این ستون ها رو با میانگین جایگزین
+کردم. ولی ستون هایی که skewed هستند و داده پرت دارند کمتر نزدیک میانگین
+پخش شدند برای همین داده های گم شدشون رو با میانه جایگزین کردم که ضرر
+کمتری به داده ها برنه.
+</p>
+
+\
+
+<p class="rtl-text">
+<strong>• نقشه همبستگی (correlation map) ویژگی های دادگان را رسم کنید و
+به انتخاب خود ۴ فرضیه در مورد همبستگی ویژگی ها مطرح کنید و با آزمون t آن
+ها را مورد بررسی قرار دهید. </strong>
+</p>
+
+<p class="rtl-text">
+correlation بین ویژگی های عددی:
+</p>
+
+```{r message=FALSE,warning=FALSE}
+library(corrplot)
+
+# Selecting only the numerical columns
+numerical_df <- df[sapply(df, is.numeric)]
+
+# Calculating the correlation matrix
+correlation_matrix <- cor(numerical_df)
+
+# Plotting the correlation matrix
+corrplot(correlation_matrix, method = "color", type = "upper", order = "hclust")
+
+```
+
+<p class="rtl-text">
+فرضیه: car weight و car length ارتباط مستقیم قوی به هم دارند:
+</p>
+
+```{r}
+# Extracting car length and car weight
+car_length <- numerical_df$carlength
+car_weight <- numerical_df$curbweight
+
+# Performing the correlation test
+cor_test <- cor.test(car_length, car_weight)
+
+# significance level = 5%
+alpha <- 0.05
+
+# Checking if the p-value is less than the significance level
+if (cor_test$p.value < alpha) {
+  cat("There is a significant positive correlation between car length and car weight at a significance level of 5%.\n")
+} else {
+  cat("There is no significant positive correlation between car length and car weight at a significance level of 5%.\n")
+}
+```
+
+<p class="rtl-text">
+فرضیه: car width و car length ارتباط مستقیم قوی به هم دارند:
+</p>
+
+```{r}
+# Extracting car length and car width
+car_length <- numerical_df$carlength
+car_width <- numerical_df$carwidth
+
+# Performing the correlation test
+cor_test <- cor.test(car_length, car_width)
+
+# significance level = 5%
+alpha <- 0.05
+
+# Checking if the p-value is less than the significance level
+if (cor_test$p.value < alpha) {
+  cat("There is a significant positive correlation between car length and car width at a significance level of 5%.\n")
+} else {
+  cat("There is no significant positive correlation between car length and car width at a significance level of 5%.\n")
+}
+```
+
+<p class="rtl-text">
+فرضیه: price و citympg ارتباط عکس قوی نسبت به هم دارند:
+</p>
+
+```{r}
+# Extracting car price and car citympg
+car_price <- numerical_df$price
+car_citympg <- numerical_df$citympg
+
+# Performing the correlation test
+cor_test <- cor.test(car_price, car_citympg)
+
+# significance level = 5%
+alpha <- 0.05
+
+# Checking if the p-value is less than the significance level
+if (cor_test$p.value < alpha) {
+  cat("There is a significant negative correlation between car price and car citympg at a significance level of 5%.\n")
+} else {
+  cat("There is no significant negative correlation between car price and car citympg
+  at a significance level of 5%.\n")
+}
+```
+
+<p class="rtl-text">
+فرضیه(برای رد کردن): stroke و boreratio ارتباط مستقیم قوی نسبت به هم
+دارند:
+</p>
+
+```{r}
+boreratio <- numerical_df$boreratio
+stroke <- numerical_df$stroke
+
+# Performing the correlation test
+cor_test <- cor.test(stroke, boreratio)
+
+# significance level = 5%
+alpha <- 0.05
+
+# Checking if the p-value is less than the significance level
+if (cor_test$p.value < alpha) {
+  cat("There is a significant positive correlation between car stroke and car boreratio at a significance level of 5%.\n")
+} else {
+  cat("There is no significant positive correlation between car stroke and car boreratio
+  at a significance level of 5%.\n")
+}
+```
+
+<p class="rtl-text">
+
+<strong>• برای دادگان دسته ای (categorical) متغیر های dummy تعریف کنید و
+به دادگان اضافه کنید. 
+</strong>
+</p>
+<p class="rtl-text">
+ابتدا به علت تعداد زیاد CarName و متمایز بودن آن برای هر سطر CarCompany تبدیل میکنیم چرا که تاثیر با معناتری بر روی قیمت ماشین دارند:
+</p>
+```{r message=FALSE}
+library(fastDummies)
+# extract the Car company names
+CarCompany <- sapply(strsplit(as.character(df$CarName), " "), function(x) x[1])
+df$CarName <- CarCompany
+colnames(df)[colnames(df) == "CarName"] <- "CarCompany"
+# now create dummies
+df<-dummy_cols(df)
+# for example
+df$cylindernumber_four
+```
+
+<p class="rtl-text">
+<strong>• یک روش برای پیش بینی عملکرد مدل روی دادگان دیده نشده استفاده
+از مجموعه دادگانی منتخب از دادگان موجود به صورت تصادفی است (به این
+مجموعه دادگان test و به سایر داده های باقی مانده train گفته می شود). با
+توجه به توضیحات داده شده، دادگان خود را به دو دسته train و test تقسیم
+کنید. به چه نسبتی این تقسیم را انجام می دهید؟ 
+</strong>
+</p>
+<p class="rtl-text">
+داده ها را طوری تقسیم میکنیم که 80% داده ها را برای train و 20% باقی
+مانده را برای test استفاده کنیم:
+</p>
+
+```{r}
+
+# Set the seed for reproducibility
+set.seed(11)
+
+# Generate random indices for train and test sets
+train_indices <- sample(nrow(df), 0.8 * nrow(df))  # 80% of the rows for training
+test_indices <- setdiff(1:nrow(df), train_indices)  # Remaining rows for testing
+
+# Create train and test sets
+train_data <- df[train_indices, ]
+test_data <- df[test_indices, ]
+```
+
+<p class="rtl-text">
+
+<strong>• با توجه به نقشه همبستگی و مقادیر بدست آمده پیش بینی کنید کدام
+ویژگی ها موثر تر و کدام موارد دارای اثر غیرموجه (اثر علّی کمتر روی متغیر
+پاسخ) هستند. 
+</strong>
+</p>
+<p class="rtl-text">
+با توجه به نقشه همبستگی و بدون محاسبه دقیق به نظر میاد که ویژگی هایی که
+تاثیر بیشتری روی متغیر پاسخمون(price) داره ابعاد و وزن
+ماشین،enginesize،horsepower،citympg و highwaympg هست.به صورت دقیقتر اگر
+بیخواهیم این ویژگی ها را به ترتیب اثر گذاری لیست کنیم:
+</p>
+
+```{r}
+# Sort the correlation coefficients for the price column
+cor_price <- correlation_matrix[,"price"]
+# not including the correlation of price with itself
+cor_price <- cor_price[-which(names(cor_price) == "price")]
+
+sorted_cor_price <- sort(cor_price, decreasing = TRUE)
+
+# Display the results
+result <- data.frame(feature = names(sorted_cor_price), correlation = sorted_cor_price)
+print(cbind(result$feature, result$correlation))
+```
+
+\
+
+<p class="rtl-text" style="font-size: 22px;">
+<strong>بخش دوم: پردازش دادگان با مدل رگرسیون چندگانه</strong>
+</p>
+<p class="rtl-text">
+<strong>•
+ابتدا مدل را بر روی دادگان train برازش کرده و موارد زیر را بر روی هر دو سری دادگان گزارش کنید.
+RSS
+TSS
+MSE
+R_Squared
+adjusted R_squared
+</strong>
+</p>
+```{r warning=FALSE}
+# extracting numerical columns of train data set
+numerical_train <- train_data[sapply(train_data, is.numeric)]
+# Remove columns "X" and "Car_ID" from numerical_train
+numerical_train <- numerical_train[, !(colnames(numerical_train) %in% c("X", "car_ID"))]
+# Fit a regression model using the train dataset
+model <- lm(price ~ ., data = numerical_train)
+summary(model)
+# the predicted values and residuals
+train_predictions <- predict(model, newdata = numerical_train)
+train_residuals <- numerical_train$price - train_predictions
+# plot for comparison
+plot(train_data$price, train_predictions, main = "Actual vs. Predicted Prices",
+     xlab = "Actual Price", ylab = "Predicted Price")
+abline(0, 1, col = "red", lwd = 2)
+#  the RSS, TSS, and MSE
+RSS <- sum(train_residuals^2)
+TSS <- sum((numerical_train$price - mean(numerical_train$price))^2)
+MSE <- mean(train_residuals^2)
+#  the R-squared and adjusted R-squared
+n <- nrow(numerical_train)
+p <- length(coefficients(model)) - 1 # number of predictors
+R_squared <- 1 - RSS/TSS
+adjusted_R_squared <- 1 - (RSS/(n - p - 1))/(TSS/(n - 1))
+
+# Print the computed values
+
+cat("train data:\n RSS = ", RSS, "\n","TSS = ", TSS, "\n","MSE = ", MSE, "\n","R-squared = ", R_squared, "\n","Adjusted R-squared = ", adjusted_R_squared, "\n")
+```
+```{r warning=FALSE}
+# extracting numerical columns of test data set
+numerical_test <- test_data[sapply(test_data, is.numeric)]
+# Remove columns "X" and "Car_ID" from numerical_test
+numerical_test <- numerical_test[, !(colnames(numerical_test) %in% c("X", "car_ID"))]
+# the predicted values and residuals
+test_predictions <- predict(model, newdata = numerical_test)
+test_residuals <- numerical_test$price - test_predictions
+
+#  the RSS, TSS, and MSE
+RSS <- sum(test_residuals^2)
+TSS <- sum((numerical_test$price - mean(numerical_test$price))^2)
+MSE <- mean(test_residuals^2)
+#  the R-squared and adjusted R-squared
+n <- nrow(numerical_test)
+p <- length(coefficients(model)) - 1 # number of predictors
+R_squared <- 1 - RSS/TSS
+adjusted_R_squared <- 1 - (RSS/(n - p - 1))/(TSS/(n - 1))
+
+# Print the computed values
+
+cat("test data:\n RSS = ", RSS, "\n","TSS = ", TSS, "\n","MSE = ", MSE, "\n","R-squared = ", R_squared, "\n","Adjusted R-squared = ", adjusted_R_squared, "\n")
+```
+<p class="rtl-text">
+<strong>•
+بررسی کنید هر یک از معیار های ذکر شده چه ویژگی هایی را توضیح میدهد و در کجا کاربرد دارد.
+</strong>
+</p>
+<p class="rtl-text">
+Residual Sum of Squares(RSS): اختلاف بین مقادیر واقعی و مقادیر پیش بینی شده متغیر وابسته در یک مدل رگرسیون رو نشون میده , برای سنجش goodness-of-fit برای یه مدل رگرسیونی به کار میرود.که هر چقدر کوچیکتر باشه یعنی مقادیری که مدلمون پیش بینی میکنه به مقدار واقعی نزدیکترند.
+</p>
+<p class="rtl-text">
+Total Sum of Squares(TSS): میزان پراکندگی متغیر پاسخ یا همان متغیر وابسته را نشان میدهد و  برای این رو نشون میده که چه میزان از پراکندگی متغیر پاسخ توسط متغیر های پیشگو قابل توضیحه.
+</p>
+<p class="rtl-text">
+MSE : میانگین مربع خطا ها را محاسبه میکند.برای مقایسه مدل های رگرسیونی به کار میرود که هر چه این مقدار کمتر باشد یعنی مدل پیش بینی دقیقتری انجام میدهد.
+</p>
+<p class="rtl-text">
+R-squared : سهمی از پراکندگی متغیر پاسخ را نشان میدهد که توسط predictor ها قابل توضیح میباشد.هر چه این عدد بیشتر باید یعنی predictor های مدلمون بیشتر میتوانند پراکندگی های متغیر پاسخ را توضیح دهند.
+</p>
+<p class="rtl-text">
+Adjusted R-squared :
+</p>
+<p class="rtl-text">
+<strong>•
+نقشه مقایسه میزان ضرایب را رسم کنید. آیا زیاد بودن یک ضریب به دلیل اهمیت بالای آن است؟ در صورتی که مقیاس داده ها یکسان باشد چطور؟ تحلیل کنید.
+</strong>
+</p>
+```{r warning=FALSE, message=FALSE}
+library(plotly)
+
+# Extract the coefficients from the model
+coefficients_vector <- coef(model)
+
+# Create a data frame with predictor names and coefficients
+data <- data.frame(Predictor = names(coefficients_vector),
+                   Coefficient = coefficients_vector)
+
+# Create an interactive bar plot using plotly
+plot_ly(data, x = ~Predictor, y = ~Coefficient, type = "bar") %>%
+  layout(title = "Regression Coefficients",
+         xaxis = list(title = "Predictor Variables"),
+         yaxis = list(title = "Coefficients"),
+         margin = list(l = 50, r = 50, t = 50, b = 50),
+         autosize = TRUE,
+         dragmode = "pan",
+         hovermode = "closest")
+```
+<p class="rtl-text">
+خیر زیاد بودن یک ضریب الزاما به دلیل اهمیت بالای آن نیست چرا که predictor ها شاید مقیاس مختلفی داشته باشند که در این صورت ضرایبشون هم مقیاس های مختلفی خوهند
+</p>
+<p class="rtl-text">
+در صورتی که مقیاس ها برابر باشند شرایط بهتر میشود ولی باز اگر colinearity وجود داشته باشه بین predictor ها سخت میشه فهمید که کدوم تاثیر بیشتر یا کمتری روی متغیر پاسخ دارند.
+</p>
+<p class="rtl-text">
+<strong>•
+عملکر مدل را روی دادگان test توصیف کنید. توضیح دهید برای بهبود این عملکرد چه کاری می توان کرد (تفسیر پذیری و قابلییت پیش بینی مدل را برررسی کنید).
+</strong>
+</p>
+<p class="rtl-text">
+برای قابلیت پیش بینی اول نموداری میکشیم که مقادیر predict را با مقادیر واقعی مقایسه کنیم:
+</p>
+```{r warning=FALSE}
+# the predicted values and residuals
+test_predictions <- predict(model, newdata = numerical_test)
+test_residuals <- numerical_test$price - test_predictions
+# plot for comparison
+plot(test_data$price, test_predictions, main = "Actual vs. Predicted Prices for test data set",
+     xlab = "Actual Price", ylab = "Predicted Price")
+abline(0, 1, col = "red", lwd = 2)
+```
+<p class="rtl-text">
+این نمودار نشان میدهد مقادیر پیش بینی شده برای test چقدر به مقادیر واقعی نزدیکند.و ظاهرا با افزایش قیمت ماشین ها مقادیر پیش بینی شده برای آن ها از قیمت اصلی دورترند که دلایل متعددی میتواند داشته باشد.
+</p>
+<p class="rtl-text">
+اما اگر بخواهیم مدل رو از نظر و قابلییت پیش بینی مقایسه نیم باید مقادیر زیر را مقایسه کنیم:
+</p> 
+```{r warning=FALSE}
+# the predicted values and residuals
+test_predictions <- predict(model, newdata = numerical_test)
+test_residuals <- numerical_test$price - test_predictions
+#  the RSS,R-squared, and MSE
+RSS <- sum(test_residuals^2)
+MSE <- mean(test_residuals^2)
+TSS <- sum((numerical_test$price - mean(numerical_test$price))^2)
+R_squared <- 1 - RSS/TSS
+
+
+# Print the computed values
+
+cat("test data:\n RSS = ", RSS, "\n","MSE = ", MSE, "\n","R-squared = ", R_squared, "\n")
+```
+<p class="rtl-text">
+برای مثال ما قبلا train test را به نسبت 80 20 تقسیم کرده بودیم.حال آنها را به نسبت 90 10 تقسیم میکنیم تا عملکر مدل جدید را ببینیم و با حالت قبلی مقایسه کنیم:
+</p>
+```{r}
+# Set the seed for reproducibility
+set.seed(19)
+
+# Generate random indices for train and test sets
+newtrain_indices <- sample(nrow(numerical_df), 0.9 * nrow(numerical_df))  # 90% of the rows for training
+newtest_indices <- setdiff(1:nrow(numerical_df), newtrain_indices)  # Remaining rows for testing
+
+# Create train and test sets
+new_train <- numerical_df[newtrain_indices, ]
+new_test <- numerical_df[newtest_indices, ]
+
+# Remove columns "X" and "Car_ID" from new_train
+new_train <- new_train[, !(colnames(new_train) %in% c("X", "car_ID"))]
+# Fit a regression model using the train dataset
+new_model <- lm(price ~ ., data = new_train)
+# Remove columns "X" and "Car_ID" from new_test
+new_test <- new_test[, !(colnames(new_test) %in% c("X", "car_ID"))]
+# the predicted values and residuals
+test_predictions <- predict(new_model, newdata = new_test)
+test_residuals <- new_test$price - test_predictions
+#  the RSS,R-squared, and MSE
+RSS <- sum(test_residuals^2)
+MSE <- mean(test_residuals^2)
+TSS <- sum((new_test$price - mean(new_test$price))^2)
+R_squared <- 1 - RSS/TSS
+
+
+# Print the computed values
+
+cat("test data:\n RSS = ", RSS, "\n","MSE = ", MSE, "\n","R-squared = ", R_squared, "\n")
+```
+<p class="rtl-text">
+با توجه به کاهش مقدار mse میتوان گقت که عملکرد مدل در این حالت بهتر شده است.
+</p>
+<p class="rtl-text">
+در مورد interpretability:<br>
+در حالت کلی در هر مدلی یک trade off بین interpretability و predictivity وجود دارد.در همین مدل هم من هر چه قدر قابلیت پیش بینی مدل رو افزایش بدم از اون طرف قابلیت تفسیر پذیری آن کمتر میشود.البته که معمولا مدل های خطی مثل مدل ما بیشتر برای interpretability مناسب هستند تا predictivity ولی در این مدل بخصوص به علت وجود همبستگی زیاد بین بعضی predictor ها و همچنین تعداد زیاد predictor ها باز interpret کردن کمی سخت است چون نمیتوان به صورت حتمی گفت که کدام predictor ها رو متغیر پاسخ تاثیر بیشتر یا کمتری دارند.برای حل این مشکل از feature selection در بخش بعدی استفاده میکنیم.
+</p>
+
+<p class="rtl-text", style="font-size: 22px;">
+<strong>بخش سوم : انتخاب ویژگی (Feature Selection) و تحلیل</strong>
+</p>
+<p class="rtl-text">
+<strong>•
+بر اساس آزمون t و p-value‌ها و متدی که انتخاب می‌کنید. تعداد ویژگی‌های خود را به تعدادی کاهش دهید که از لحاظ تفسیری مدل شما قابل بهبود یابد. عملکر مدل شما در پیش‌بینی چگونه تغییر می کند؟معیار‌های نام برده شده چگونه تغییر می‌کنند. علت انتخاب متد خود را توضیح دهید.
+</strong>
+</p>
+```{r}
+# Get the summary of the model
+summary_model <- summary(model)
+
+# Set the significance level for feature selection
+significance_level <- 0.05
+
+# Extract the p-values from the model summary
+p_values <- summary_model$coefficients[, "Pr(>|t|)"]
+
+# Create a logical vector indicating the predictors with p-values less than the significance level
+significant_predictors <- p_values < significance_level
+
+# Select the significant predictors
+selected_features <- names(significant_predictors)[significant_predictors]
+selected_features
+```
+```{r}
+# Remove (intercept) from selected features
+selected_features <- selected_features[selected_features != "(Intercept)"]
+selected_features <- gsub("`", "", selected_features)
+# Subset the data set with the selected features
+selected_data <- numerical_train[, c("price", selected_features)]
+
+# Fit the new model
+new_model <- lm(price ~ ., data = selected_data)
+```
+<p class="rtl-text">
+برای مقایسه معیار ها:
+</p>
+```{r warning=FALSE}
+# Calculate RSS,MSE, TSS,R-squared and R-squared adjusted for the new model
+new_predictions <- predict(new_model, numerical_test)
+new_residuals <- numerical_test$price - new_predictions
+new_rss <- sum(new_residuals^2)
+new_tss <- sum((numerical_test$price - mean(numerical_train$price))^2)
+new_r_squared_adj <- 1 - (new_rss / (length(numerical_test$price) - length(selected_features) - 1))
+new_mse <- mean(new_residuals^2)
+new_r_squared <- 1 - (new_rss / new_tss)
+
+# Calculate RSS,MSE, TSS,R-squared and R-squared adjusted for the previous model
+previous_predictions <- predict(model, numerical_test)
+previous_residuals <- numerical_test$price - previous_predictions
+previous_rss <- sum(previous_residuals^2)
+previous_tss <- sum((numerical_test$price - mean(numerical_train$price))^2)
+previous_r_squared_adj <- 1 - (previous_rss / (length(numerical_test$price) - length(colnames(numerical_train)) - 1))
+previous_mse <- mean(previous_residuals^2)
+previous_r_squared <- 1 - (previous_rss / previous_tss)
+
+# Print the results
+cat("New Model:\n",
+    "  RSS:", new_rss, "\n",
+    "  TSS:", new_tss, "\n",
+    "  R-squared Adjusted:", new_r_squared_adj, "\n",
+    "  MSE:", new_mse, "\n",
+    "  R-squared:", new_r_squared, "\n\n",
+    "Previous Model:\n",
+    "  RSS:", previous_rss, "\n",
+    "  TSS:", previous_tss, "\n",
+    "  R-squared Adjusted:", previous_r_squared_adj, "\n",
+    "  MSE:", previous_mse, "\n",
+    "  R-squared:", previous_r_squared, "\n")
+
+# Calculate the differences between the new and previous model metrics
+rss_diff <- new_rss - previous_rss
+tss_diff <- new_tss - previous_tss
+r_squared_adj_diff <- new_r_squared_adj - previous_r_squared_adj
+mse_diff <- new_mse - previous_mse
+r_squared_diff <- new_r_squared - previous_r_squared
+
+# Print the changes in metrics
+cat("Changes in metrics:\n",
+    "  RSS difference:", rss_diff, "\n",
+    "  TSS difference:", tss_diff, "\n",
+    "  R-squared Adjusted difference:", r_squared_adj_diff, "\n",
+    "  MSE difference:", mse_diff, "\n",
+    "  R-squared difference:", r_squared_diff, "\n")
+```
+<p class="rtl-text">
+بعد از feature selection با کم شدن predictor ها interpretability بیشتر میشود چرا که رابطه با predictor های کمتر و مهمتر راحتتر میشه رابطه بین predictor ها و متغیر پاسخ را فهمید.
+</p>
+<p class="rtl-text">
+همچنین با توجه به اختلاف mse دو مدل میتوان گفت که predictivity هم با feature selection بهبود یافته.
+</p>
+<p class="rtl-text">
+<strong>•
+با استفاده از ANOVA و f-statistics عملیات انتخاب ویژگی را انجام دهید و ۱۰ ویژگی برتر را خروجی دهید.
+</strong>
+</p>
+```{r}
+# Perform ANOVA and calculate F-statistic for each feature
+anova_results <- anova(model)
+f_statistics <- anova_results$`F value`
+
+# Create a data frame with the feature names and corresponding F-statistics
+feature_f_stats <- data.frame(Feature = rownames(anova_results), F_Statistic = f_statistics, stringsAsFactors = FALSE)
+
+# Sort the data frame in descending order based on F-statistic values
+sorted_features <- feature_f_stats[order(-feature_f_stats$F_Statistic), ]
+
+# Select the top 10 features
+top_10_features <- head(sorted_features, 10)
+# Remove row names from the data frame
+rownames(top_10_features) <- NULL
+
+# Output the top 10 features
+cat("Top 10 Features:\n",paste0(top_10_features$Feature, ": ", top_10_features$F_Statistic, "\n"))
+```
+<p class="rtl-text">
+<strong>•
+گاهی اوقات پیش می‌آید که دو متغیر پیشگو دارای ارتباط هم‌افزاینده (synergy) می‌باشند. پس از انجام موارد ذکر شده ۱۰ جفت به ویژگی که به نظرتان رابطه هم‌افزاینده دارند را انتخاب کرده بررسی کنید و در صورت لزوم متفیر هم‌افزاینده آن دو را به مجموعه ویژگی‌های خود اضافه کنید. آیا اکنون هم نیاز به آزمون t و انتخاب ویژگی داریم؟ دلیل خود را ذکر کنید.
+</strong>
+</p>
+<p class="rtl-text">
+برای هر 2 تا ویژگی یک ستون به دادمون اضافه میکنیم که مقدار ضرب این دو تا ستون رو نگهداری میکنه اینها همان interaction term ها هستند.بعد از انجام این کار برای همه ستون ها مدل رگرسیونی روی داده های train برازش میکنیم که برای هر ستون یک ضریب و یک p-value میدهد.مجددا با آزمون t آن ویژگی ها را که p-value کمتر از سطح معناداری میدهند برای مدلمون feature selection میکنیم.
+در واقع با این کار  فرض کردیم همه متغیر ها رابطه synergy دارند ولی در آخر آنهایی که از نظر آماری معنادارتر بودند را در آخر برای predictor به مدلمون اضافه کردیم.همچنین با اینکار شاید مثلا یک ویژگی که قبلا به تنهایی در feature selection انتخاب نشده بوده ولی به علت رابطه هم افزاینده زیادی که با متغیر دیگه داشته interaction term آن برای predictor   synergetic  مدل استفاده بشه.
+</p>
+```{r echo=FALSE}
+#library(interactions)
+
+#numerical_train_interactions <- interaction(numerical_train, degree = 2, sep = "_")
+
+#numerical_train <- cbind(numerical_train, numerical_train_interactions)
+
+```
+
+<p class="rtl-text", style="font-size: 22px;">
+<strong> بخش امتیازی</strong>
+</p>
+<p class="rtl-text">
+<strong>•
+مدلی با تفسیر‌پذیری بالا بر روی دادگان برازش کرده و نتایج آن را گزارش کنید و این مدل را توضیح دهید.
+</strong>
+</p>
+<p class="rtl-text">
+مراحل مدل decision tree : <br>
+1) تقسیم‌بندی: در ابتدا درخت تصمیم  کل  داده را در  ریشه قرار میدهد.سپس یکی از ویژگی ها و  یک نقطه بر اساس معیاری مانند مینیمم کردن ناخالصی برای تقسیم انتخاب می‌شود. هدف از تقسیم، ایجاد زیرمجموعه‌های یکنواخت تر با توجه به متغیر هدف است.<br>
+2)ساخت درخت: پس از انجام تقسیم، داده به دو یا چند زیرمجموعه براساس معیار تقسیم، تقسیم می‌شود. هر زیرمجموعه به عنوان یک گره جدید در نظر گرفته می‌شود و همین روند به صورت بازگشتی بر روی هر گره تکرار میشود. تقسیم‌بندی تا زمانی ادامه پیدا میکند که به ماکسیمم عمق درخت رسیده باشیم و یا به مینیمم تعداد داده در یک برگ و یا مینیمم مقدار ناخالصی(impurity).<br>
+3) گره‌های برگ و پیش‌بینی: هنگامی که این تقسیم ها به پایان می‌رسد، گره‌های نتیجه به عنوان گره‌های برگ درخت در نظر گرفته می‌شوند. هر گره برگ پیش‌بینی خاصی را برای متغیر پاسخ نشان می‌دهد. برا مسائل رگرسیونی، هر گره برگ مقدار عددی را نشان می‌دهد.<br>
+4)پیش‌بینی: برای پیش‌بینی داده‌های جدید درخت تصمیم از ریشه تا گره برگ بر اساس مقادیر ویژگی‌های ورودی پمایش می‌کند. در هر گره تصمیم بر اساس مقدار ویژگی نسبت به نقطه تقسیم گرفته می‌شود. این فرآیند تا رسیدن به یک گره برگ ادامه دارد و پیش‌بینی مربوط به آن گره برگ به عنوان پیش‌بینی نهایی مدل درخت تصمیم بازگردانده می‌شود و یا در حالت رگرسیونی میانگین مقادیر را به عنوان پیش بینی باز میگرداند.
+</p>
+```{r warning=FALSE}
+library(rpart)
+library(rpart.plot)
+
+# Create a decision tree for regression
+tree_model <- rpart(price ~ ., data = numerical_train, method = "anova")
+
+# Plot the decision tree
+rpart.plot(tree_model)
+
+# Make predictions on the test data
+test_predictions <- predict(tree_model, newdata = numerical_test)
+
+# Calculate Residual Sum of Squares (RSS)
+rss <- sum((test_predictions - numerical_test$price)^2)
+
+# Calculate Total Sum of Squares (TSS)
+tss <- sum((numerical_test$price - mean(numerical_train$price))^2)
+
+# Calculate R-squared
+r_squared <- 1 - (rss / tss)
+
+# Calculate Adjusted R-squared
+n <- nrow(numerical_test)  # Number of samples in the test set
+p <- ncol(numerical_test) - 1  # Number of predictors (excluding the response variable)
+r_squared_adjusted <- 1 - (rss / tss) * ((n - 1) / (n - p - 1))
+
+# Calculate Mean Squared Error (MSE)
+mse <- mean((test_predictions - numerical_test$price)^2)
+# Print the evaluation metrics
+cat("Residual Sum of Squares (RSS):", rss,
+                "\nTotal Sum of Squares (TSS):", tss,
+                "\nR-squared:", r_squared,
+                "\nAdjusted R-squared:", r_squared_adjusted,
+                "\nMean Squared Error (MSE):", mse)
+
+
+```
+<p class="rtl-text">
+این مدل از این نظر برای interpret کردن خوب  است که با حرکت از بالای درخت به پایین آن ویژگی هایی که تاثیر بیشتری در متغیر پاسخ دارند(بالای درخت) میتوان دید.همچنین threshhold هایی به ما میدهد که در دو طرف آن متغیر پاسخ تفاوت چشمگیری دارد.(منظورم همان نقاط تقسیم است)
+</p>
+
+
+
+
+
